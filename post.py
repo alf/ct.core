@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from lxml import html
+import calendar
 import datetime
 import urllib
 import urllib2
@@ -123,7 +124,38 @@ class CurrentTime(object):
             project = Project(names, values)
             projects.append(project)
         return projects
- 
+
+    def get_hours(self, project_map={}):
+        result = []
+        rows = self._page.cssselect("input[name=activityrow]")[0].value
+        for i in range(1, int(rows) + 1):
+            projectel = self._page.cssselect("input[name=activityrow_%s]" % i)[0]
+            project = ",".join(projectel.value.split(",")[:4])
+            project = project_map.get(project, project)
+
+            row = projectel.getparent().getparent()
+            root = self._page.getroottree().getpath(row)
+            tds = self._page.xpath(root + "/td[@class='datacol' or @class='lastcol' or @class='holiday' or @class='readonly']")
+
+            for date in self.days_in_current_month():
+                day = date.day
+                cell = "cell_%s_%s" % (i, day)
+                hours = self._page.cssselect("input[name=%s_duration]" % cell)
+                if hours:
+                    hours = hours[0].value
+                    comment = self._page.cssselect("input[name=%s_note]" % cell)[0].value
+                else:
+                    hours = tds[(day - 1) * 2][0].text.strip()
+                    comment = tds[(day - 1) * 2 + 1][0].text.strip()
+                if hours:
+                    result.append((date, project, hours, comment))
+        return result
+
+    def days_in_current_month(self):
+        date = self.current_month()
+        _, num_days = calendar.monthrange(date.year, date.month)
+        return [datetime.date(date.year, date.month, day) for day in range(1, num_days + 1)]
+
     def post(self, project, day, hours, comment):
         data = urllib.urlencode({
             "activityrow": "1",
@@ -138,4 +170,4 @@ class CurrentTime(object):
         return self._parse_response(response)
 
 ct = CurrentTime()
-projects = ct.get_projects()
+projects = dict([(str(p), p) for p in ct.get_projects()])
