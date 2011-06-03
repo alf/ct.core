@@ -7,11 +7,12 @@ import urllib
 import urllib2
 import cookielib
 import ConfigParser
+from collections import defaultdict
 
 class Project(object):
     def __init__(self, names, values):
         # Use an internal dict so we're immutable
-        self.__dict = {
+        self._dict = {
             "project": names[0],
             "task": names[1],
             "subtask": names[2],
@@ -23,15 +24,24 @@ class Project(object):
             }
 
     def __repr__(self):
-        d = self.__dict
-        names = [d["project"], d["task"], d["subtask"]]
-        if d["activity"]:
-            names.append(d["activity"])
+        return self.name
+
+    @property
+    def full_name(self):
+        name = "%(project)s - %(task)s - %(subtask)s"
+        if self._dict.get("activity"):
+            name += " - %(activity)s"
+        result = name % self._dict 
             
-        return ", ".join([x.encode("utf-8") for x in names])
+        return result.encode("utf-8")
+
+    @property
+    def name(self):
+        result = "%(project)s - %(task)s" % self._dict
+        return result.encode("utf-8")
 
     def __str__(self):
-        return "projectid=%(projectid)s,taskid=%(taskid)s,subtaskid=%(subtaskid)s,activityid=%(activityid)s" % self.__dict
+        return "projectid=%(projectid)s,taskid=%(taskid)s,subtaskid=%(subtaskid)s,activityid=%(activityid)s" % self._dict
 
 class CurrentTime(object):
     def __init__(self):
@@ -61,7 +71,34 @@ class CurrentTime(object):
     def _get_entire_month(self):
         response = self._browser.open('https://currenttime.bouvet.no/Timesheet/default.asp?caltimesheet=1,7')
         return self._parse_response(response)
-    
+
+    def goto_year(self, year):
+        now = datetime.datetime.now()
+        assert abs(now.year - year) < 25, "Year offset too large"
+
+        current = self.current_month().year
+        offset = abs(current - year)
+
+        if current < year:
+            for _ in range(offset):
+                self.next_year()
+        else:
+            for _ in range(offset):
+                self.previous_year()
+
+    def goto_month(self, month):
+        assert month > 0 and month <= 12
+
+        current = self.current_month().month
+        offset = abs(current - month)
+
+        if current < month:
+            for _ in range(offset):
+                self.next_month()
+        else:
+            for _ in range(offset):
+                self.previous_month()
+
     def next_month(self):
         response = self._browser.open('https://currenttime.bouvet.no/Timesheet/default.asp?caltimesheet=1,8')
         self._page = self._get_entire_month()
@@ -123,7 +160,8 @@ class CurrentTime(object):
             names = [(x.text or '') for x in tr.cssselect("td[class=text]")]
             project = Project(names, values)
             projects.append(project)
-        return projects
+
+        return dict([(str(p), p) for p in projects])
 
     def get_hours(self, project_map={}):
         result = []
@@ -142,10 +180,10 @@ class CurrentTime(object):
                 cell = "cell_%s_%s" % (i, day)
                 hours = self._page.cssselect("input[name=%s_duration]" % cell)
                 if hours:
-                    hours = hours[0].value
+                    hours = self._hours_to_float(hours[0].value)
                     comment = self._page.cssselect("input[name=%s_note]" % cell)[0].value
                 else:
-                    hours = tds[(day - 1) * 2][0].text.strip()
+                    hours = self._hours_to_float(tds[(day - 1) * 2][0].text)
                     comment = tds[(day - 1) * 2 + 1][0].text.strip()
                 if hours:
                     result.append((date, project, hours, comment))
@@ -169,5 +207,38 @@ class CurrentTime(object):
         response = self._browser.open("https://currenttime.bouvet.no/Timesheet/default.asp", data)
         return self._parse_response(response)
 
-ct = CurrentTime()
-projects = dict([(str(p), p) for p in ct.get_projects()])
+    def _hours_to_float(self, hours_input):
+        hours = hours_input.strip()
+        if not hours:
+            return 0.0
+
+        return float(hours.replace(",", "."))
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-m', dest='month', type=int, default=0,
+                        help='The month number to list hours from, defaults to current month')
+    parser.add_argument('-y', dest='year', type=int, default=0,
+                        help='The year to list hours from, defaults to current year')
+    args = parser.parse_args()
+
+    ct = CurrentTime()
+
+    if args.month > 0:
+        ct.goto_month(args.month)
+
+    if args.year > 0:
+        ct.goto_year(args.year)
+
+    result = defaultdict(lambda: 0)
+    for date, project, hours, comment in ct.get_hours():
+        result[project] += hours
+
+    projects = ct.get_projects()
+    for project, worked in result.items():
+        print "%04s: %s" % (worked, projects[project].full_name)
+        
+        
+        
+
