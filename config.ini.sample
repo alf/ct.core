@@ -1,3 +1,6 @@
 [login]
 username = 
 password = 
+
+[server]
+url = https://currenttime.bouvet.no
