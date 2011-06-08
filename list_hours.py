@@ -56,4 +56,7 @@ if __name__ == "__main__":
 
     projects = ct.get_projects()
     for project, worked in result.items():
+        if not worked:
+            continue
+
         print "%04s: %s" % (worked, projects[project].full_name)
