@@ -38,6 +38,7 @@ import ConfigParser
 
 __all__ = ["CurrentTimeBrowser"]
 
+
 def updates_current_page(meth):
     def decorate(self, *args, **kwargs):
         response = meth(self, *args, **kwargs)

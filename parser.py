@@ -101,9 +101,8 @@ class CurrentTimeParser(object):
     def current_month(self, response):
         root = self._parse_response(response)
 
-        els = root.xpath("/html/body/table[3]/tr/td[2]/table[1]/tr/td[1]/table[1][@class='calendar']/tr/td[2][@class='top']/b")
-        heading = els[0]
-        parts = heading.get("title").split(" ")
+        el = root.cssselect("td[class=accept]")[0]
+        parts = el.text_content().strip().split(" ")
         start = parts[1]
         _, m, y = [int(x.lstrip("0")) for x in start.split(".")]
         return datetime.date(y, m, 1)
@@ -132,27 +131,55 @@ class CurrentTimeParser(object):
         result = []
 
         root = self._parse_response(response)
+        month = self.current_month(response)
+
         rows = root.cssselect("input[name=activityrow]")[0].value
         for i in range(1, int(rows) + 1):
             projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
             project = ",".join(projectel.value.split(",")[:4])
 
-            row = projectel.getparent().getparent()
-            row_root = root.getroottree().getpath(row)
-            tds = root.xpath(row_root + "/td[@class='datacol' or @class='lastcol' or @class='holiday' or @class='readonly']")
+            ro_hours = self._get_ro_hours(projectel, project, month, root, i)
+            rw_hours = self._get_rw_hours(project, month, root, i)
+            result.extend(ro_hours)
+            result.extend(rw_hours)
 
-            for date in self._days_in_month(self.current_month(response)):
-                day = date.day
-                cell = "cell_%s_%s" % (i, day)
-                hours = root.cssselect("input[name=%s_duration]" % cell)
-                if hours:
-                    hours = self._hours_to_float(hours[0].value)
-                    comment = root.cssselect("input[name=%s_note]" % cell)[0].value
-                else:
-                    hours = self._hours_to_float(tds[(day - 1) * 2][0].text)
-                    comment = tds[(day - 1) * 2 + 1][0].text.strip()
-                if hours:
-                    result.append((date, project, hours, comment))
+        return result
+
+    def _get_ro_hours(self, projectel, project, month, root, i):
+        result = []
+
+        row = projectel.getparent().getparent()
+        row_root = root.getroottree().getpath(row)
+        ro_classes = [
+            "@class='datacol'",
+            "@class='lastcol'",
+            "@class='holiday'",
+            "@class='readonly'"
+        ]
+        tds = root.xpath("%s/td[%s]" % (row_root, " or ".join(ro_classes)))
+
+        for date in self._days_in_month(month):
+            day = date.day
+            hours = self._hours_to_float(tds[(day - 1) * 2][0].text)
+            if not hours:
+                continue
+
+            comment = tds[(day - 1) * 2 + 1][0].text.strip()
+            result.append((date, project, hours, comment))
+        return result
+
+    def _get_rw_hours(self, project, month, root, i):
+        result = []
+        for date in self._days_in_month(month):
+            day = date.day
+            cell = "cell_%s_%s" % (i, day)
+            hours = root.cssselect("input[name=%s_duration]" % cell)
+            if not hours:
+                continue
+
+            hours = self._hours_to_float(hours[0].value)
+            comment = root.cssselect("input[name=%s_note]" % cell)[0].value
+            result.append((date, project, hours, comment))
         return result
 
     def _days_in_month(self, date):
