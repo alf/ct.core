@@ -30,6 +30,8 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
+import os
+import sys
 import datetime
 import urllib
 import urllib2
@@ -68,7 +70,12 @@ class CurrentTimeBrowser(object):
 
     def __init__(self):
         config = ConfigParser.ConfigParser()
-        config.read(['config.ini.sample', 'config.ini'])
+        user_cfg = os.path.expanduser('~/.ct.cfg')
+        default_cfg = os.path.join(
+            sys.prefix,
+            'share/ct/config.ini.sample')
+
+        config.read([default_cfg, user_cfg])
 
         self._server = config.get("server", "url")
         self._username = config.get("login", "username")
