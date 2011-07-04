@@ -118,7 +118,18 @@ class SimpleAPI(object):
     def list_activities(self, year, month):
         self._goto_year(year)
         self._goto_month(month)
-        return self._ct.list_activities()
+
+        projects = self.get_projects()
+        activities = []
+        for day, project, hours, comment in self._ct.list_activities():
+            activity = {
+                'day': day,
+                'hours': hours,
+                'comment': comment,
+                'project': projects[project],
+            }
+            activities.append(activity)
+        return activities
 
     def report_activity(self, project, date, hours, comment):
         self._goto_year(date.year)

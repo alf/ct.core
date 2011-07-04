@@ -68,6 +68,10 @@ class Project(object):
         return result.encode("utf-8")
 
     @property
+    def project_id(self):
+        return self._dict.get("projectid")
+
+    @property
     def name(self):
         result = "%(project)s - %(task)s" % self._dict
         return result.encode("utf-8")
