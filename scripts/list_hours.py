@@ -33,7 +33,7 @@
 
 import datetime
 from collections import defaultdict
-from apis import SimpleAPI
+from ct.apis import SimpleAPI
 
 
 if __name__ == "__main__":
@@ -50,13 +50,11 @@ if __name__ == "__main__":
     ct = SimpleAPI()
 
     result = defaultdict(lambda: 0)
-    for date, project, hours, comment in ct.list_activities(
-        args.year, args.month):
-        result[project] += hours
+    for activity in ct.list_activities(args.year, args.month):
+        result[activity['project']] += activity['hours']
 
-    projects = ct.get_projects()
     for project, worked in result.items():
         if not worked:
             continue
 
-        print "%04s: %s" % (worked, projects[project].full_name)
+        print "%04s: %s" % (worked, project.full_name)

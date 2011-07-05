@@ -33,7 +33,7 @@
 
 import datetime
 from collections import defaultdict
-from apis import SimpleAPI
+from ct.apis import SimpleAPI
 
 
 if __name__ == "__main__":
