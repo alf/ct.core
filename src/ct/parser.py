@@ -50,7 +50,7 @@ class Project(object):
             }
 
     def __repr__(self):
-        return self.name
+        return self.name.encode('utf-8')
 
     @property
     def full_name(self):
@@ -63,9 +63,7 @@ class Project(object):
         if self._dict.get("activity"):
             parts.append("%(activity)s")
 
-        result = " - ".join(parts) % self._dict
-
-        return result.encode("utf-8")
+        return " - ".join(parts) % self._dict
 
     @property
     def project_id(self):
@@ -73,8 +71,7 @@ class Project(object):
 
     @property
     def name(self):
-        result = "%(project)s - %(task)s" % self._dict
-        return result.encode("utf-8")
+        return "%(project)s - %(task)s" % self._dict
 
     def __str__(self):
         parts = [
@@ -89,7 +86,7 @@ class Project(object):
 
 class CurrentTimeParser(object):
     def _parse_response(self, response):
-        return html.fromstring(contents)
+        return html.fromstring(response)
 
     def _get_session_id(self, response):
         root = self._parse_response(response)
@@ -128,7 +125,7 @@ class CurrentTimeParser(object):
             project = Project(names, values)
             projects.append(project)
 
-        return dict([(str(p), p) for p in projects])
+        return projects
 
     def get_hours(self, response):
         result = []

@@ -65,6 +65,22 @@ class CurrentTimeBrowser(object):
         'post_hours': 'Timesheet/default.asp',
     }
 
+    def __getstate__(self):
+        cookies = {}
+        if hasattr(self, '_cookie_jar'):
+            cookies = self._cookie_jar._cookies
+
+        return {
+            'server': self._server,
+            'cookies': cookies
+        }
+
+    def __setstate__(self, state):
+        self._server = state['server']
+        if 'cookies' in state:
+            self._cookie_jar = cookielib.CookieJar()
+            self._cookie_jar._cookies = state['cookies']
+
     def __init__(self, server):
         self._server = server
 
@@ -141,7 +157,7 @@ class CurrentTimeBrowser(object):
 
         return self._read(url, data)
 
-    def read(self, *args):
+    def _read(self, *args):
         response = self._open(*args)
         return response.read()
 

@@ -126,13 +126,14 @@ class SimpleAPI(object):
         self._goto_month(month)
 
         projects = self.get_projects()
+        project_dict = dict([(str(p), p) for p in projects])
         activities = []
         for day, project, hours, comment in self._ct.list_activities():
             activity = {
                 'day': day,
                 'hours': hours,
                 'comment': comment,
-                'project': projects[project],
+                'project': project_dict[project],
             }
             activities.append(activity)
         return activities
