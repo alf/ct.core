@@ -30,13 +30,10 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
-import os
-import sys
 import datetime
 import urllib
 import urllib2
 import cookielib
-import ConfigParser
 
 __all__ = ["CurrentTimeBrowser"]
 
@@ -68,20 +65,8 @@ class CurrentTimeBrowser(object):
         'post_hours': 'Timesheet/default.asp',
     }
 
-    def __init__(self):
-        config = ConfigParser.ConfigParser()
-        user_cfg = os.path.expanduser('~/.ct.cfg')
-        default_cfg = os.path.join(
-            sys.prefix,
-            'share/ct/config.ini.sample')
-
-        config.read([default_cfg, user_cfg])
-
-        self._server = config.get("server", "url")
-        self._username = config.get("login", "username")
-        self._password = config.get("login", "password")
-
-        self.login()
+    def __init__(self, server):
+        self._server = server
 
     @property
     def current_page(self):
@@ -90,35 +75,42 @@ class CurrentTimeBrowser(object):
 
         return self._current_page
 
-    def login(self):
-        url = self._get_url('login')
-        data = self._get_login_data()
-        return self._open(url, data)
+    def login(self, username, password):
+        login_url = self._get_url('login')
+        data = self._get_login_data(username, password)
+
+        response = self._open(login_url, data)
+
+        is_logged_in = response.geturl() != login_url
+        if is_logged_in:
+            self._current_page = response.read()
+
+        return is_logged_in
 
     @updates_current_page
     def get_current_month(self):
         url = self._get_url('get_current_month')
-        return self._open(url)
+        return self._read(url)
 
     @invalidates_current_page
     def goto_next_month(self):
         url = self._get_url('goto_next_month')
-        return self._open(url)
+        return self._read(url)
 
     @invalidates_current_page
     def goto_prev_month(self):
         url = self._get_url('goto_prev_month')
-        return self._open(url)
+        return self._read(url)
 
     @invalidates_current_page
     def goto_next_year(self):
         url = self._get_url('goto_next_year')
-        return self._open(url)
+        return self._read(url)
 
     @invalidates_current_page
     def goto_prev_year(self):
         url = self._get_url('goto_prev_year')
-        return self._open(url)
+        return self._read(url)
 
     def get_projects(self, date=None):
         if date is None:
@@ -133,7 +125,7 @@ class CurrentTimeBrowser(object):
         })
 
         url = self._get_url('get_projects')
-        return self._open(url, data)
+        return self._read(url, data)
 
     @updates_current_page
     def post(self, session_id, project, day, hours, comment):
@@ -147,33 +139,31 @@ class CurrentTimeBrowser(object):
             "sessionid": session_id,
         })
 
-        return self._open(url, data)
+        return self._read(url, data)
+
+    def read(self, *args):
+        response = self._open(*args)
+        return response.read()
 
     def _open(self, *args):
-        response = self._opener.open(*args)
-        code = response.code
-        headers = response.headers
-        contents = response.read()
-        return code, headers, contents
+        return self._opener.open(*args)
 
     @property
     def _opener(self):
-        if not hasattr(self, '_my_opener'):
-            self._my_opener = self._create_cookie_opener()
-        return self._my_opener
+        if not hasattr(self, '_cookie_jar'):
+            self._cookie_jar = cookielib.CookieJar()
 
-    def _create_cookie_opener(self):
-        cj = cookielib.CookieJar()
-        return urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+        return urllib2.build_opener(
+            urllib2.HTTPCookieProcessor(self._cookie_jar))
 
     def _get_url(self, name):
         rest = self.URLS.get(name)
         return "%s/%s" % (self._server, rest)
 
-    def _get_login_data(self):
+    def _get_login_data(self, username, password):
         return urllib.urlencode({
-                'ctusername': self._username,
-                'ctpassword': self._password,
+                'ctusername': username,
+                'ctpassword': password,
                 'browserversion': "ns6",
                 'activex': "False",
                 'useraction': "login",

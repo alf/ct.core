@@ -38,9 +38,12 @@ __all__ = ["BaseAPI", "SimpleAPI"]
 
 
 class BaseAPI(object):
-    def __init__(self):
-        self._browser = CurrentTimeBrowser()
+    def __init__(self, server):
+        self._browser = CurrentTimeBrowser(server)
         self._parser = CurrentTimeParser()
+
+    def login(self, username, password):
+        return self._browser.login(username, password)
 
     @property
     def current_date(self):
@@ -85,8 +88,11 @@ class BaseAPI(object):
 
 
 class SimpleAPI(object):
-    def __init__(self):
-        self._ct = BaseAPI()
+    def __init__(self, server):
+        self._ct = BaseAPI(server)
+
+    def login(self, username, password):
+        return self._ct.login(username, password)
 
     def _goto_year(self, year):
         now = datetime.datetime.now()

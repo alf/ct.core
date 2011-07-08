@@ -31,14 +31,28 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
-import datetime
-from collections import defaultdict
+import os
+import sys
 from ct.apis import SimpleAPI
+import ConfigParser
+
+config = ConfigParser.ConfigParser()
+user_cfg = os.path.expanduser('~/.ct.cfg')
+default_cfg = os.path.join(
+    sys.prefix,
+    'share/ct/config.ini.sample')
+
+config.read([default_cfg, user_cfg])
+
+server = config.get("server", "url")
+username = config.get("login", "username")
+password = config.get("login", "password")
 
 
-if __name__ == "__main__":
-    ct = SimpleAPI()
-
+ct = SimpleAPI(server)
+if ct.login(username, password):
     projects = ct.get_projects()
     for _, project in sorted(projects.items()):
-	print "%s (%s)" %(project.name, str(project))
+        print "%s (%s)" % (project.name, str(project))
+else:
+    print "Could not login."

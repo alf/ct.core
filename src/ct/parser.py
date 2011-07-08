@@ -89,7 +89,6 @@ class Project(object):
 
 class CurrentTimeParser(object):
     def _parse_response(self, response):
-        _, _, contents = response
         return html.fromstring(contents)
 
     def _get_session_id(self, response):

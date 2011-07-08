@@ -31,24 +31,38 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
+import os
+import sys
+import argparse
 import datetime
 from collections import defaultdict
 from ct.apis import SimpleAPI
+import ConfigParser
+
+config = ConfigParser.ConfigParser()
+user_cfg = os.path.expanduser('~/.ct.cfg')
+default_cfg = os.path.join(
+    sys.prefix,
+    'share/ct/config.ini.sample')
+
+config.read([default_cfg, user_cfg])
+
+server = config.get("server", "url")
+username = config.get("login", "username")
+password = config.get("login", "password")
 
 
-if __name__ == "__main__":
-    import argparse
-    now = datetime.datetime.now()
+now = datetime.datetime.now()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-m', dest='month', type=int, default=now.month,
-       help='The month number to list hours from, defaults to current month')
-    parser.add_argument('-y', dest='year', type=int, default=now.year,
-       help='The year to list hours from, defaults to current year')
-    args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', dest='month', type=int, default=now.month,
+   help='The month number to list hours from, defaults to current month')
+parser.add_argument('-y', dest='year', type=int, default=now.year,
+   help='The year to list hours from, defaults to current year')
+args = parser.parse_args()
 
-    ct = SimpleAPI()
-
+ct = SimpleAPI(server)
+if ct.login(username, password):
     result = defaultdict(lambda: 0)
     for activity in ct.list_activities(args.year, args.month):
         result[activity['project']] += activity['hours']
@@ -58,3 +72,5 @@ if __name__ == "__main__":
             continue
 
         print "%04s: %s" % (worked, project.full_name)
+else:
+    print "Could not login."
