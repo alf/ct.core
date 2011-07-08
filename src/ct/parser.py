@@ -159,12 +159,15 @@ class CurrentTimeParser(object):
         tds = root.xpath("%s/td[%s]" % (row_root, " or ".join(ro_classes)))
 
         for date in self._days_in_month(month):
-            day = date.day
-            hours = self._hours_to_float(tds[(day - 1) * 2][0].text)
+            i = (date.day - 1) * 2
+            if len(tds) <= i:
+                break
+
+            hours = self._hours_to_float(tds[i][0].text)
             if not hours:
                 continue
 
-            comment = tds[(day - 1) * 2 + 1][0].text.strip()
+            comment = tds[i + 1][0].text.strip()
             result.append((date, project, hours, comment))
         return result
 

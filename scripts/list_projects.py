@@ -52,7 +52,7 @@ password = config.get("login", "password")
 ct = SimpleAPI(server)
 if ct.login(username, password):
     projects = ct.get_projects()
-    for _, project in sorted(projects.items()):
+    for project in sorted(projects):
         print "%s (%s)" % (project.name, str(project))
 else:
     print "Could not login."
