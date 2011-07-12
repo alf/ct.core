@@ -33,6 +33,9 @@
 
 import os
 import sys
+import argparse
+import datetime
+from collections import defaultdict
 from ct.apis import SimpleAPI
 import ConfigParser
 
@@ -49,10 +52,26 @@ username = config.get("login", "username")
 password = config.get("login", "password")
 
 
+now = datetime.datetime.now()
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', dest='month', type=int, default=now.month,
+   help='The month number to list hours from, defaults to current month')
+parser.add_argument('-y', dest='year', type=int, default=now.year,
+   help='The year to list hours from, defaults to current year')
+args = parser.parse_args()
+
 ct = SimpleAPI(server)
 if ct.login(username, password):
-    projects = ct.get_projects()
-    for project in sorted(projects):
-        print "%s (%s)" % (project.name, project.id)
+    result = defaultdict(lambda: 0)
+    for activity in ct.get_activities(args.year, args.month):
+        result[activity.project_id] += activity.duration
+
+    project_map = dict([(p.id, p) for p in ct.get_projects()])
+    for project_id, worked in sorted(result.items()):
+        if not worked:
+            continue
+
+        print "%04s: %s" % (worked, project_map[project_id].name)
 else:
     print "Could not login."

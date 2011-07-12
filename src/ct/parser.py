@@ -34,61 +34,15 @@ from lxml import html
 import calendar
 import datetime
 
-
-class Project(object):
-    def __init__(self, names, values):
-        # Use an internal dict so we're immutable
-        self._dict = {
-            "project": names[0],
-            "task": names[1],
-            "subtask": names[2],
-            "activity": names[3],
-            "projectid": int(values[0]),
-            "taskid": int(values[1]),
-            "subtaskid": int(values[2]),
-            "activityid": int(values[3])
-            }
-
-    def __repr__(self):
-        return self.name.encode('utf-8')
-
-    @property
-    def full_name(self):
-        parts = [
-            "%(project)s",
-            "%(task)s",
-            "%(subtask)s"
-        ]
-
-        if self._dict.get("activity"):
-            parts.append("%(activity)s")
-
-        return " - ".join(parts) % self._dict
-
-    @property
-    def project_id(self):
-        return self._dict.get("projectid")
-
-    @property
-    def name(self):
-        return "%(project)s - %(task)s" % self._dict
-
-    def __str__(self):
-        parts = [
-            "projectid=%(projectid)s",
-            "taskid=%(taskid)s",
-            "subtaskid=%(subtaskid)s",
-            "activityid=%(activityid)s"
-        ]
-
-        return ",".join(parts) % self._dict
+from ct.project import Project
+from ct.activity import Activity
 
 
 class CurrentTimeParser(object):
     def _parse_response(self, response):
         return html.fromstring(response)
 
-    def _get_session_id(self, response):
+    def _parse_session_id(self, response):
         root = self._parse_response(response)
 
         elements = root.cssselect("input[name='sessionid']")
@@ -96,9 +50,9 @@ class CurrentTimeParser(object):
             return el.value
 
     def parse_navigation(self, response):
-        return self.current_month(response)
+        return self.parse_current_month(response)
 
-    def current_month(self, response):
+    def parse_current_month(self, response):
         root = self._parse_response(response)
 
         el = root.cssselect("td[class=accept]")[0]
@@ -127,25 +81,27 @@ class CurrentTimeParser(object):
 
         return projects
 
-    def get_hours(self, response):
-        result = []
+    def parse_activities(self, response):
+        activities = []
 
         root = self._parse_response(response)
-        month = self.current_month(response)
+        month = self.parse_current_month(response)
 
         rows = root.cssselect("input[name=activityrow]")[0].value
         for i in range(1, int(rows) + 1):
             projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
-            project = ",".join(projectel.value.split(",")[:4])
+            project_id = self._parse_project_id(projectel.value)
 
-            ro_hours = self._get_ro_hours(projectel, project, month, root, i)
-            rw_hours = self._get_rw_hours(project, month, root, i)
-            result.extend(ro_hours)
-            result.extend(rw_hours)
+            ro_activities = self._parse_ro_activities(
+                projectel, project_id, month, root, i)
+            rw_activities = self._parse_rw_activities(
+                project_id, month, root, i)
+            activities.extend(ro_activities)
+            activities.extend(rw_activities)
 
-        return result
+        return sorted(activities)
 
-    def _get_ro_hours(self, projectel, project, month, root, i):
+    def _parse_ro_activities(self, projectel, project_id, month, root, i):
         result = []
 
         row = projectel.getparent().getparent()
@@ -168,10 +124,12 @@ class CurrentTimeParser(object):
                 continue
 
             comment = tds[i + 1][0].text.strip()
-            result.append((date, project, hours, comment))
+            activity = Activity(
+                date, project_id, hours, comment, read_only=True)
+            result.append(activity)
         return result
 
-    def _get_rw_hours(self, project, month, root, i):
+    def _parse_rw_activities(self, project_id, month, root, i):
         result = []
         for date in self._days_in_month(month):
             day = date.day
@@ -182,7 +140,9 @@ class CurrentTimeParser(object):
 
             hours = self._hours_to_float(hours[0].value)
             comment = root.cssselect("input[name=%s_note]" % cell)[0].value
-            result.append((date, project, hours, comment))
+
+            activity = Activity(date, project_id, hours, comment)
+            result.append(activity)
         return result
 
     def _days_in_month(self, date):
@@ -198,3 +158,8 @@ class CurrentTimeParser(object):
             return 0.0
 
         return float(hours.replace(",", "."))
+
+    def _parse_project_id(self, value):
+        parts = value.split(",")[:4]
+        ids = [x.split("=")[1] for x in parts]
+        return ",".join(ids)

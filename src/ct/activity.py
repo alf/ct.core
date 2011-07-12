@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 2011 Alf Lervåg. All rights reserved.
 #
@@ -31,28 +30,45 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
-import os
-import sys
-from ct.apis import SimpleAPI
-import ConfigParser
 
-config = ConfigParser.ConfigParser()
-user_cfg = os.path.expanduser('~/.ct.cfg')
-default_cfg = os.path.join(
-    sys.prefix,
-    'share/ct/config.ini.sample')
+class Activity(object):
+    def __init__(self, day, project_id, duration, comment, read_only=False):
+        # Use an internal dict so we're immutable
+        self._dict = {
+            'day': day,
+            'project_id': project_id,
+            'duration': duration,
+            'comment': comment,
+            'read_only': read_only,
+        }
 
-config.read([default_cfg, user_cfg])
+    def __cmp__(self, other):
+        return cmp(
+            (self.day, self.project_id),
+            (other.day, other.project_id))
 
-server = config.get("server", "url")
-username = config.get("login", "username")
-password = config.get("login", "password")
+    def __eq__(self, other):
+        return self._dict == other._dict
 
+    def __ne__(self, other):
+        return not self == other
 
-ct = SimpleAPI(server)
-if ct.login(username, password):
-    projects = ct.get_projects()
-    for project in sorted(projects):
-        print "%s (%s)" % (project.name, project.id)
-else:
-    print "Could not login."
+    @property
+    def day(self):
+        return self._dict['day']
+
+    @property
+    def project_id(self):
+        return self._dict['project_id']
+
+    @property
+    def duration(self):
+        return self._dict['duration']
+
+    @property
+    def comment(self):
+        return self._dict['comment']
+
+    @property
+    def is_read_only(self):
+        return self._dict['read_only']

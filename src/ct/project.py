@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 2011 Alf Lervåg. All rights reserved.
 #
@@ -31,46 +30,57 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
-import os
-import sys
-import argparse
-import datetime
-from collections import defaultdict
-from ct.apis import SimpleAPI
-import ConfigParser
 
-config = ConfigParser.ConfigParser()
-user_cfg = os.path.expanduser('~/.ct.cfg')
-default_cfg = os.path.join(
-    sys.prefix,
-    'share/ct/config.ini.sample')
+class Project(object):
+    def __init__(self, names, values):
+        # Use an internal dict so we're immutable
+        self._dict = {
+            "project": names[0],
+            "task": names[1],
+            "subtask": names[2],
+            "activity": names[3],
+            "projectid": int(values[0]),
+            "taskid": int(values[1]),
+            "subtaskid": int(values[2]),
+            "activityid": int(values[3])
+            }
 
-config.read([default_cfg, user_cfg])
+    def __str__(self):
+        return self.id
 
-server = config.get("server", "url")
-username = config.get("login", "username")
-password = config.get("login", "password")
+    def __repr__(self):
+        return self.name.encode('utf-8')
 
+    @property
+    def name(self):
+        parts = [
+            "%(project)s",
+            "%(task)s",
+            "%(subtask)s"
+        ]
 
-now = datetime.datetime.now()
+        if self._dict.get("activity"):
+            parts.append("%(activity)s")
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-m', dest='month', type=int, default=now.month,
-   help='The month number to list hours from, defaults to current month')
-parser.add_argument('-y', dest='year', type=int, default=now.year,
-   help='The year to list hours from, defaults to current year')
-args = parser.parse_args()
+        return " - ".join(parts) % self._dict
 
-ct = SimpleAPI(server)
-if ct.login(username, password):
-    result = defaultdict(lambda: 0)
-    for activity in ct.list_activities(args.year, args.month):
-        result[activity['project']] += activity['hours']
+    @property
+    def id(self):
+        s = "%(projectid)s,%(taskid)s,%(subtaskid)s,%(activityid)s"
+        return s % self._dict
 
-    for project, worked in result.items():
-        if not worked:
-            continue
+    @property
+    def project_name(self):
+        return self._dict.get("project")
 
-        print "%04s: %s" % (worked, project.full_name)
-else:
-    print "Could not login."
+    @property
+    def task_name(self):
+        return self._dict.get("task")
+
+    @property
+    def subtask_name(self):
+        return self._dict.get("subtask")
+
+    @property
+    def activity_name(self):
+        return self._dict.get("activity")

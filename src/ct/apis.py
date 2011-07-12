@@ -47,20 +47,25 @@ class BaseAPI(object):
 
     @property
     def current_date(self):
-        return self._parser.current_month(self._browser.current_page)
+        return self._parser.parse_current_month(self._browser.current_page)
 
-    def report_activity(self, project, date, hours, comment):
-        session_id = self._parser.get_session_id(self._browser.current_page)
-        if not self._is_in_correct_state(date):
+    def report_activity(self, activity):
+        session_id = self._parser.parse_session_id(self._browser.current_page)
+        if not self._is_in_correct_state(activity.day):
             raise ValueError(
                 "Date argument is not withing the currently displayed date.")
 
         response = self._browser.post(
-            session_id, project, date.day, hours, comment)
-        return self._parser._parse_post_response(response)
+            session_id,
+            activity.project_id,
+            activity.day.day,
+            activity.duration,
+            activity.comment)
 
-    def list_activities(self):
-        return self._parser.get_hours(self._browser.current_page)
+        return response
+
+    def get_activities(self):
+        return self._parser.parse_activities(self._browser.current_page)
 
     def goto_next_month(self):
         response = self._browser.goto_next_month()
@@ -83,7 +88,7 @@ class BaseAPI(object):
         return self._parser.parse_projects(response)
 
     def _is_in_correct_state(self, date):
-        current = self._parser.get_current_month(self._browser.current_page)
+        current = self._parser.parse_current_month(self._browser.current_page)
         return current.year == date.year and current.month == date.month
 
 
@@ -121,27 +126,33 @@ class SimpleAPI(object):
             for _ in range(offset):
                 self._ct.goto_prev_month()
 
-    def list_activities(self, year, month):
+    def get_projects(self, *args, **kwargs):
+        return self._ct.get_projects(*args, **kwargs)
+
+    def get_activities(self, year, month):
         self._goto_year(year)
         self._goto_month(month)
 
-        projects = self.get_projects()
-        project_dict = dict([(str(p), p) for p in projects])
-        activities = []
-        for day, project, hours, comment in self._ct.list_activities():
-            activity = {
-                'day': day,
-                'hours': hours,
-                'comment': comment,
-                'project': project_dict[project],
-            }
-            activities.append(activity)
-        return activities
+        return self._ct.get_activities()
 
-    def report_activity(self, project, date, hours, comment):
-        self._goto_year(date.year)
-        self._goto_month(date.month)
-        return self._ct.report_activity(project, date, hours, comment)
+    def report_activity(self, activity):
+        self._goto_year(activity.day.year)
+        self._goto_month(activity.day.month)
+        return self._ct.report_activity(activity)
+
+
+class RangeAPI(object):
+    def __init__(self, server):
+        self._ct = SimpleAPI(server)
+
+    def login(self, username, password):
+        self._ct.login(username, password)
 
     def get_projects(self, *args, **kwargs):
         return self._ct.get_projects(*args, **kwargs)
+
+    def get_activities(self, from_date, to_date):
+        raise NotImplemented("Work in progress")
+
+    def report_activity(self, activity, previous=None):
+        raise NotImplemented("Work in progress")
