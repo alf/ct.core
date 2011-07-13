@@ -31,6 +31,8 @@
 # Alf Lervåg.
 
 import datetime
+import unittest
+
 from parser import CurrentTimeParser
 from browser import CurrentTimeBrowser
 
@@ -152,7 +154,83 @@ class RangeAPI(object):
         return self._ct.get_projects(*args, **kwargs)
 
     def get_activities(self, from_date, to_date):
-        raise NotImplemented("Work in progress")
+        activities = []
+        for year, month in self._months_in_range(from_date, to_date):
+            for activity in self._ct.get_activities(year, month):
+                if from_date <= activity.day and activity.day <= to_date:
+                    activities.append(activity)
+
+        return activities
 
     def report_activity(self, activity, previous=None):
-        raise NotImplemented("Work in progress")
+        activities = self.get_activities(activity.day, activity.day)
+        if not previous and activity in activities:
+            index = activities.index(activity)
+            previous = activities[index]
+            raise ActivityAlreadyExists(activity, previous)
+
+        if not previous in activities:
+            raise PreviousActivityNotFound(activity, previous)
+
+        index = activities.index(previous)
+        actual_previous = activities[index]
+        if self._has_changed(previous, actual_previous):
+            raise PreviousActivityChanged(activity, actual_previous)
+
+        self._ct.report_activity(activity)
+
+    def _months_in_range(self, from_date, to_date):
+        year, month = from_date.year, from_date.month
+        while (year, month) <= (to_date.year, to_date.month):
+            yield year, month
+
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+
+
+class TestRangeAPI(unittest.TestCase):
+    def test_1_month_in_same_month_and_year(self):
+        api = RangeAPI("no-server")
+        from_date = to_date = datetime.date(2011, 6, 1)
+        months = list(api._months_in_range(from_date, to_date))
+
+        self.assertEquals(1, len(months))
+
+    def test_2_months_in_same_year_and_following_month(self):
+        api = RangeAPI("no-server")
+        from_date = datetime.date(2011, 6, 1)
+        to_date = datetime.date(2011, 7, 1)
+        months = list(api._months_in_range(from_date, to_date))
+
+        self.assertEquals(2, len(months))
+
+    def test_13_months_in_same_month_and_following_year(self):
+        api = RangeAPI("no-server")
+        from_date = datetime.date(2011, 6, 1)
+        to_date = datetime.date(2012, 6, 1)
+        months = list(api._months_in_range(from_date, to_date))
+
+        self.assertEquals(13, len(months))
+
+
+class ActivityConflict(Exception):
+    def __init__(self, new_value, current_value):
+        self.new_value = new_value
+        self.current_value = current_value
+
+
+class ActivityAlreadyExists(ActivityConflict):
+    pass
+
+
+class PreviousActivityChanged(ActivityConflict):
+    pass
+
+
+class PreviousActivityNotFound(ActivityConflict):
+    pass
+
+if __name__ == "__main__":
+    unittest.main()

@@ -53,6 +53,9 @@ class Activity(object):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash((self.day, self.project_id))
+
     @property
     def day(self):
         return self._dict['day']
@@ -72,3 +75,4 @@ class Activity(object):
     @property
     def is_read_only(self):
         return self._dict['read_only']
+
