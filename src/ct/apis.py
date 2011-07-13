@@ -148,7 +148,7 @@ class RangeAPI(object):
         self._ct = SimpleAPI(server)
 
     def login(self, username, password):
-        self._ct.login(username, password)
+        return self._ct.login(username, password)
 
     def get_projects(self, *args, **kwargs):
         return self._ct.get_projects(*args, **kwargs)
@@ -164,7 +164,7 @@ class RangeAPI(object):
 
     def report_activity(self, activity, previous=None):
         self._perform_optimistic_concurrency_validation(activity, previous)
-        self._ct.report_activity(activity)
+        return self._ct.report_activity(activity)
 
     def _get_months_in_range(self, from_date, to_date):
         year, month = from_date.year, from_date.month
