@@ -155,7 +155,7 @@ class RangeAPI(object):
 
     def get_activities(self, from_date, to_date):
         activities = []
-        for year, month in self._months_in_range(from_date, to_date):
+        for year, month in self._get_months_in_range(from_date, to_date):
             for activity in self._ct.get_activities(year, month):
                 if from_date <= activity.day and activity.day <= to_date:
                     activities.append(activity)
@@ -163,6 +163,20 @@ class RangeAPI(object):
         return activities
 
     def report_activity(self, activity, previous=None):
+        self._perform_optimistic_concurrency_validation(activity, previous)
+        self._ct.report_activity(activity)
+
+    def _get_months_in_range(self, from_date, to_date):
+        year, month = from_date.year, from_date.month
+        while (year, month) <= (to_date.year, to_date.month):
+            yield year, month
+
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+
+    def _perform_optimistic_concurrency_validation(self, activity, previous):
         activities = self.get_activities(activity.day, activity.day)
         if not previous and activity in activities:
             index = activities.index(activity)
@@ -177,24 +191,12 @@ class RangeAPI(object):
         if self._has_changed(previous, actual_previous):
             raise PreviousActivityChanged(activity, actual_previous)
 
-        self._ct.report_activity(activity)
-
-    def _months_in_range(self, from_date, to_date):
-        year, month = from_date.year, from_date.month
-        while (year, month) <= (to_date.year, to_date.month):
-            yield year, month
-
-            month += 1
-            if month > 12:
-                month = 1
-                year += 1
-
 
 class TestRangeAPI(unittest.TestCase):
     def test_1_month_in_same_month_and_year(self):
         api = RangeAPI("no-server")
         from_date = to_date = datetime.date(2011, 6, 1)
-        months = list(api._months_in_range(from_date, to_date))
+        months = list(api._get_months_in_range(from_date, to_date))
 
         self.assertEquals(1, len(months))
 
@@ -202,7 +204,7 @@ class TestRangeAPI(unittest.TestCase):
         api = RangeAPI("no-server")
         from_date = datetime.date(2011, 6, 1)
         to_date = datetime.date(2011, 7, 1)
-        months = list(api._months_in_range(from_date, to_date))
+        months = list(api._get_months_in_range(from_date, to_date))
 
         self.assertEquals(2, len(months))
 
@@ -210,7 +212,7 @@ class TestRangeAPI(unittest.TestCase):
         api = RangeAPI("no-server")
         from_date = datetime.date(2011, 6, 1)
         to_date = datetime.date(2012, 6, 1)
-        months = list(api._months_in_range(from_date, to_date))
+        months = list(api._get_months_in_range(from_date, to_date))
 
         self.assertEquals(13, len(months))
 

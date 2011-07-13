@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(name='ct',
       version='0.3pre',
-      scripts=['scripts/list_projects.py', 'scripts/list_hours.py'],
+      scripts=['scripts/list_projects.py', 'scripts/list_activities.py'],
       packages=['ct'],
       data_files=[
         ('share/ct', ['config.ini.sample']),
