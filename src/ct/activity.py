@@ -60,9 +60,6 @@ class Activity(object):
     def __str__(self):
         return str(self._dict)
 
-    def has_activity(self):
-        return self._dict["duration"] != 0.0
-
     @property
     def day(self):
         return self._dict['day']

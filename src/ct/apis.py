@@ -167,7 +167,7 @@ class RangeAPI(object):
         activities = []
         for year, month in self._get_months_in_range(from_date, to_date):
             for activity in self._ct.get_activities(year, month):
-                if from_date <= activity.day and activity.day <= to_date and activity.has_activity():
+                if from_date <= activity.day and activity.day <= to_date:
                     activities.append(activity)
 
         return activities
