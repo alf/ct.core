@@ -167,7 +167,7 @@ class RangeAPI(object):
         activities = []
         for year, month in self._get_months_in_range(from_date, to_date):
             for activity in self._ct.get_activities(year, month):
-                if from_date <= activity.day and activity.day <= to_date:
+                if from_date <= activity.day and activity.day <= to_date and activity.has_activity():
                     activities.append(activity)
 
         return activities
@@ -200,6 +200,9 @@ class RangeAPI(object):
         actual_previous = activities[index]
         if self._has_changed(previous, actual_previous):
             raise PreviousActivityChanged(activity, actual_previous)
+
+    def _has_changed(self, form_previous, actual_previous):
+        return form_previous != actual_previous
 
 
 class TestRangeAPI(unittest.TestCase):
