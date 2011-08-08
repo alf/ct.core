@@ -42,7 +42,7 @@ class CurrentTimeParser(object):
     def _parse_response(self, response):
         return html.fromstring(response)
 
-    def _parse_session_id(self, response):
+    def parse_session_id(self, response):
         root = self._parse_response(response)
 
         elements = root.cssselect("input[name='sessionid']")
