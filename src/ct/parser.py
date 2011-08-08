@@ -49,6 +49,10 @@ class CurrentTimeParser(object):
         for el in elements:
             return el.value
 
+    def valid_session(self, response):
+        root = self._parse_response(response)
+        return len(root.cssselect("body[class=login]")) == 0
+
     def parse_navigation(self, response):
         return self.parse_current_month(response)
 

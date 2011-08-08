@@ -66,6 +66,10 @@ class BaseAPI(object):
 
         return response
 
+
+    def valid_session(self):
+        return self._parser.valid_session(self._browser.current_page)
+
     def get_activities(self):
         return self._parser.parse_activities(self._browser.current_page)
 
@@ -100,6 +104,9 @@ class SimpleAPI(object):
 
     def login(self, username, password):
         return self._ct.login(username, password)
+
+    def valid_session(self):
+        return self._ct.valid_session()
 
     def _goto_year(self, year):
         now = datetime.datetime.now()
@@ -150,6 +157,9 @@ class RangeAPI(object):
     def login(self, username, password):
         return self._ct.login(username, password)
 
+    def valid_session(self):
+        return self._ct.valid_session()
+
     def get_projects(self, *args, **kwargs):
         return self._ct.get_projects(*args, **kwargs)
 
@@ -190,6 +200,9 @@ class RangeAPI(object):
         actual_previous = activities[index]
         if self._has_changed(previous, actual_previous):
             raise PreviousActivityChanged(activity, actual_previous)
+
+    def _has_changed(self, form_previous, actual_previous):
+        return form_previous != actual_previous
 
 
 class TestRangeAPI(unittest.TestCase):

@@ -30,6 +30,7 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
+from decimal import Decimal
 
 class Activity(object):
     def __init__(self, day, project_id, duration, comment, read_only=False):
@@ -37,7 +38,7 @@ class Activity(object):
         self._dict = {
             'day': day,
             'project_id': project_id,
-            'duration': duration,
+            'duration': Decimal(str(duration)),
             'comment': comment,
             'read_only': read_only,
         }
@@ -55,6 +56,9 @@ class Activity(object):
 
     def __hash__(self):
         return hash((self.day, self.project_id))
+
+    def __str__(self):
+        return str(self._dict)
 
     @property
     def day(self):
