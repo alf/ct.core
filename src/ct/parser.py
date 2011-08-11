@@ -33,6 +33,7 @@
 from lxml import html
 import calendar
 import datetime
+from decimal import Decimal
 
 from ct.project import Project
 from ct.activity import Activity
@@ -123,7 +124,7 @@ class CurrentTimeParser(object):
             if len(tds) <= i:
                 break
 
-            hours = self._hours_to_float(tds[i][0].text)
+            hours = self._parse_hours(tds[i][0].text)
             if not hours:
                 continue
 
@@ -142,7 +143,7 @@ class CurrentTimeParser(object):
             if not hours:
                 continue
 
-            hours = self._hours_to_float(hours[0].value)
+            hours = self._parse_hours(hours[0].value)
             comment = root.cssselect("input[name=%s_note]" % cell)[0].value
 
             activity = Activity(date, project_id, hours, comment)
@@ -156,12 +157,9 @@ class CurrentTimeParser(object):
             for day in range(1, num_days + 1)
         ]
 
-    def _hours_to_float(self, hours_input):
-        hours = hours_input.strip()
-        if not hours:
-            return 0.0
-
-        return float(hours.replace(",", "."))
+    def _parse_hours(self, value):
+        hours = value.strip().replace(",", ".")
+        return Decimal(hours or 0)
 
     def _parse_project_id(self, value):
         parts = value.split(",")[:4]

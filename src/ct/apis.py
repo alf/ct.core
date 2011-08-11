@@ -57,15 +57,7 @@ class BaseAPI(object):
             raise ValueError(
                 "Date argument is not withing the currently displayed date.")
 
-        response = self._browser.post(
-            session_id,
-            activity.project_id,
-            activity.day.day,
-            activity.duration,
-            activity.comment)
-
-        return response
-
+        return self._browser.post(session_id, activity)
 
     def valid_session(self):
         return self._parser.valid_session(self._browser.current_page)

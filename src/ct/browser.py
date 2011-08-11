@@ -144,11 +144,16 @@ class CurrentTimeBrowser(object):
         return self._read(url, data)
 
     @updates_current_page
-    def post(self, session_id, project, day, hours, comment):
+    def post(self, session_id, activity):
+        project_id = activity.full_project_id
+        day = activity.day.day
+        hours = str(activity.duration).replace(".", ",")
+        comment = activity.comment
+
         url = self._get_url('post_hours')
         data = urllib.urlencode({
             "activityrow": "1",
-            "activityrow_1": str(project),
+            "activityrow_1": project_id,
             "cell_1_%s_duration" % day: hours,
             "cell_1_%s_note" % day: comment,
             "useraction": "save",
