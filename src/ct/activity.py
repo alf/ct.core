@@ -30,11 +30,19 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
+import datetime
+import decimal
+
 class Activity(object):
-    def __init__(self, day, project_id, duration, comment, read_only=False):
-        # Use an internal dict so we're immutable
+    def __init__(self, date, project_id, duration, comment, read_only=False):
+        if not isinstance(date, datetime.date):
+            raise TypeError("date argument should be a date object")
+        
+        if not isinstance(duration, decimal.Decimal):
+            raise TypeError("duration argument should be a decimal")
+
         self._dict = {
-            'day': day,
+            'date': date,
             'project_id': project_id,
             'duration': duration,
             'comment': comment,
@@ -60,7 +68,7 @@ class Activity(object):
 
     @property
     def day(self):
-        return self._dict['day']
+        return self._dict['date']
 
     @property
     def full_project_id(self):
