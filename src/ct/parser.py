@@ -121,7 +121,7 @@ class CurrentTimeParser(object):
 
             duration_cell = tds[i][0]
             comment_cell = tds[i+1][0]
-            if duration_cell.tag == "div" and len(duration_cell) == 1:
+            if duration_cell.tag == "div" and len(duration_cell) > 0:
                 duration, comment = self._parse_div(duration_cell, comment_cell)
                 read_only = False
             else:
@@ -134,7 +134,7 @@ class CurrentTimeParser(object):
         return result
 
     def _parse_div(self, duration_cell, comment_cell):
-        hours = duration_cell[0].value.strip()
+        hours = self._parse_hours(duration_cell[0].value)
         comment = comment_cell[0].value.strip()
         return hours, comment
 
