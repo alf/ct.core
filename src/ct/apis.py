@@ -57,15 +57,15 @@ class BaseAPI(object):
             raise ValueError(
                 "Date argument is not withing the currently displayed date.")
 
-        response = self._browser.post(
-            session_id,
-            activity.project_id,
-            activity.day.day,
-            activity.duration,
-            activity.comment)
+        return self._browser.update(session_id, activity)
 
-        return response
+    def delete_activity(self, activity):
+        session_id = self._parser.parse_session_id(self._browser.current_page)
+        if not self._is_in_correct_state(activity.day):
+            raise ValueError(
+                "Date argument is not withing the currently displayed date.")
 
+        return self._browser.delete(session_id, activity)
 
     def valid_session(self):
         return self._parser.valid_session(self._browser.current_page)
@@ -149,6 +149,12 @@ class SimpleAPI(object):
         self._goto_month(activity.day.month)
         return self._ct.report_activity(activity)
 
+    def delete_activity(self, activity):
+        self._goto_year(activity.day.year)
+        self._goto_month(activity.day.month)
+        return self._ct.delete_activity(activity)
+
+
 
 class RangeAPI(object):
     def __init__(self, server):
@@ -175,6 +181,10 @@ class RangeAPI(object):
     def report_activity(self, activity, previous=None):
         self._perform_optimistic_concurrency_validation(activity, previous)
         return self._ct.report_activity(activity)
+
+    def delete_activity(self, activity, previous=None):
+        self._perform_optimistic_concurrency_validation(activity, previous)
+        return self._ct.delete_activity(activity)
 
     def _get_months_in_range(self, from_date, to_date):
         year, month = from_date.year, from_date.month

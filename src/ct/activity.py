@@ -30,15 +30,13 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
-from decimal import Decimal
-
 class Activity(object):
     def __init__(self, day, project_id, duration, comment, read_only=False):
         # Use an internal dict so we're immutable
         self._dict = {
             'day': day,
             'project_id': project_id,
-            'duration': Decimal(str(duration)),
+            'duration': duration,
             'comment': comment,
             'read_only': read_only,
         }
@@ -63,6 +61,11 @@ class Activity(object):
     @property
     def day(self):
         return self._dict['day']
+
+    @property
+    def full_project_id(self):
+        parts = tuple(self.project_id.split(","))
+        return "projectid=%s,taskid=%s,subtaskid=%s,activityid=%s" % parts
 
     @property
     def project_id(self):
