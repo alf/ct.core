@@ -97,16 +97,11 @@ class CurrentTimeParser(object):
             projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
             project_id = self._parse_project_id(projectel.value)
 
-            ro_activities = self._parse_ro_activities(
-                projectel, project_id, month, root, i)
-            rw_activities = self._parse_rw_activities(
-                project_id, month, root, i)
-            activities.extend(ro_activities)
-            activities.extend(rw_activities)
-
+            row = self._parse_row(projectel, project_id, month, root, i)
+            activities.extend(row)
         return sorted(activities)
 
-    def _parse_ro_activities(self, projectel, project_id, month, root, i):
+    def _parse_row(self, projectel, project_id, month, root, i):
         result = []
 
         row = projectel.getparent().getparent()
@@ -124,31 +119,29 @@ class CurrentTimeParser(object):
             if len(tds) <= i:
                 break
 
-            hours = self._parse_hours(tds[i][0].text)
-            if not hours:
-                continue
+            duration_cell = tds[i][0]
+            comment_cell = tds[i+1][0]
+            if duration_cell.tag == "div" and len(duration_cell) == 1:
+                duration, comment = self._parse_div(duration_cell, comment_cell)
+                read_only = False
+            else:
+                duration, comment = self._parse_text(duration_cell, comment_cell)
+                read_only = True
 
-            comment = tds[i + 1][0].text.strip()
             activity = Activity(
-                date, project_id, hours, comment, read_only=True)
+                date, project_id, duration, comment, read_only)
             result.append(activity)
         return result
 
-    def _parse_rw_activities(self, project_id, month, root, i):
-        result = []
-        for date in self._days_in_month(month):
-            day = date.day
-            cell = "cell_%s_%s" % (i, day)
-            hours = root.cssselect("input[name=%s_duration]" % cell)
-            if not hours:
-                continue
+    def _parse_div(self, duration_cell, comment_cell):
+        hours = duration_cell[0].value.strip()
+        comment = comment_cell[0].value.strip()
+        return hours, comment
 
-            hours = self._parse_hours(hours[0].value)
-            comment = root.cssselect("input[name=%s_note]" % cell)[0].value
-
-            activity = Activity(date, project_id, hours, comment)
-            result.append(activity)
-        return result
+    def _parse_text(self, duration_cell, comment_cell):
+        hours = self._parse_hours(duration_cell.text)
+        comment = comment_cell.text.strip()
+        return hours, comment
 
     def _days_in_month(self, date):
         _, num_days = calendar.monthrange(date.year, date.month)
