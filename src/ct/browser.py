@@ -146,7 +146,7 @@ class CurrentTimeBrowser(object):
     @updates_current_page
     def update(self, session_id, activity):
         project_id = activity.full_project_id
-        day = activity.day.day
+        day = activity.date.day
         hours = str(activity.duration).replace(".", ",")
         comment = activity.comment
 
@@ -163,16 +163,13 @@ class CurrentTimeBrowser(object):
         return self._read(url, data)
 
     @updates_current_page
-    def delete(self, session_id, activity):
-        project_id = activity.full_project_id
-        day = activity.day.day
-        hours = str(activity.duration).replace(".", ",")
-        comment = activity.comment
-
+    def delete_project(self, session_id, full_project_id, salary_id):
+        raise NotImplementedError("This method is unsafe to use for now.")
+        row_id = full_project_id + "," + salary_id
         url = self._get_url('post_hours')
         data = urllib.urlencode({
-            "selectedrow": project_id,
-            "useraction": "save",
+            "selectedrow": row_id,
+            "useraction": "del",
             "sessionid": session_id,
         })
 

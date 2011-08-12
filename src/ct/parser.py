@@ -94,15 +94,16 @@ class CurrentTimeParser(object):
 
         rows = root.cssselect("input[name=activityrow]")[0].value
         for i in range(1, int(rows) + 1):
-            projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
-            project_id = self._parse_project_id(projectel.value)
-
-            row = self._parse_row(projectel, project_id, month, root, i)
+            row = self._parse_row(month, root, i)
             activities.extend(row)
         return sorted(activities)
 
-    def _parse_row(self, projectel, project_id, month, root, i):
+    def _parse_row(self, month, root, i):
         result = []
+
+        projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
+        project_id = self._parse_project_id(projectel.value)
+        salary_id = self._parse_salary_id(projectel.value)
 
         row = projectel.getparent().getparent()
         row_root = root.getroottree().getpath(row)
@@ -129,7 +130,12 @@ class CurrentTimeParser(object):
                 read_only = True
 
             activity = Activity(
-                date, project_id, duration, comment, read_only)
+                date,
+                project_id,
+                duration,
+                comment,
+                read_only=read_only,
+                salary_id=salary_id)
             result.append(activity)
         return result
 
@@ -155,6 +161,10 @@ class CurrentTimeParser(object):
         return Decimal(hours or 0)
 
     def _parse_project_id(self, value):
-        parts = value.split(",")[:4]
+        parts = value.strip().split(",")[:4]
         ids = [x.split("=")[1] for x in parts]
         return ",".join(ids)
+
+    def _parse_salary_id(self, value):
+        parts = value.strip().split(",")[4:]
+        return ",".join(parts)
