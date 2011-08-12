@@ -46,13 +46,6 @@ def updates_current_page(meth):
     return decorate
 
 
-def invalidates_current_page(meth):
-    def decorate(self, *args, **kwargs):
-        self._current_page = None
-        return meth(self, *args, **kwargs)
-    return decorate
-
-
 class CurrentTimeBrowser(object):
     URLS = {
         'login': 'login.asp',
@@ -108,22 +101,18 @@ class CurrentTimeBrowser(object):
         url = self._get_url('get_current_month')
         return self._read(url)
 
-    @invalidates_current_page
     def goto_next_month(self):
         url = self._get_url('goto_next_month')
         return self._read(url)
 
-    @invalidates_current_page
     def goto_prev_month(self):
         url = self._get_url('goto_prev_month')
         return self._read(url)
 
-    @invalidates_current_page
     def goto_next_year(self):
         url = self._get_url('goto_next_year')
         return self._read(url)
 
-    @invalidates_current_page
     def goto_prev_year(self):
         url = self._get_url('goto_prev_year')
         return self._read(url)

@@ -55,16 +55,25 @@ class CurrentTimeParser(object):
         return len(root.cssselect("body[class=login]")) == 0
 
     def parse_navigation(self, response):
-        return self.parse_current_month(response)
+        root = self._parse_response(response)
+        el = root.cssselect("td[class=top]")[0]
+        m, y = el.text_content().strip().split()
+        s = "%s %s" % (m, y)
+        return datetime.datetime.strptime(s, "%b %Y").date()
 
-    def parse_current_month(self, response):
+    def _parse_date(self, s):
+        return datetime.datetime.strptime(s,"%d.%m.%Y").date()
+
+    def _get_current_range(self, response):
         root = self._parse_response(response)
 
         el = root.cssselect("td[class=accept]")[0]
         parts = el.text_content().strip().split(" ")
-        start = parts[1]
-        _, m, y = [int(x.lstrip("0")) for x in start.split(".")]
-        return datetime.date(y, m, 1)
+        if len(parts) > 3:
+            _, start, _, end = parts
+        else:
+            start, end = parts[1], parts[1]
+        return self._parse_date(start), self._parse_date(end)
 
     def parse_projects(self, response):
         root = self._parse_response(response)
@@ -90,15 +99,15 @@ class CurrentTimeParser(object):
         activities = []
 
         root = self._parse_response(response)
-        month = self.parse_current_month(response)
+        start, end = self._get_current_range(response)
 
         rows = root.cssselect("input[name=activityrow]")[0].value
         for i in range(1, int(rows) + 1):
-            row = self._parse_row(month, root, i)
+            row = self._parse_row(start, end, root, i)
             activities.extend(row)
         return sorted(activities)
 
-    def _parse_row(self, month, root, i):
+    def _parse_row(self, start, end, root, i):
         result = []
 
         projectel = root.cssselect("input[name=activityrow_%s]" % i)[0]
@@ -115,11 +124,7 @@ class CurrentTimeParser(object):
         ]
         tds = root.xpath("%s/td[%s]" % (row_root, " or ".join(ro_classes)))
 
-        for date in self._days_in_month(month):
-            i = (date.day - 1) * 2
-            if len(tds) <= i:
-                break
-
+        for i, date in enumerate(self._dates(start, end)):
             duration_cell = tds[i][0]
             comment_cell = tds[i+1][0]
             if duration_cell.tag == "div" and len(duration_cell) > 0:
@@ -149,12 +154,11 @@ class CurrentTimeParser(object):
         comment = comment_cell.text.strip()
         return hours, comment
 
-    def _days_in_month(self, date):
-        _, num_days = calendar.monthrange(date.year, date.month)
-        return [
-            datetime.date(date.year, date.month, day)
-            for day in range(1, num_days + 1)
-        ]
+    def _dates(self, start, end):
+        current = start
+        while current <= end:
+            yield current
+            current += datetime.timedelta(days=1)
 
     def _parse_hours(self, value):
         hours = value.strip().replace(",", ".")
