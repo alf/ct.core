@@ -51,10 +51,25 @@ class BaseAPI(object):
         return self._parser.valid_session(self._browser.current_page)
 
     def get_day(self, year, month, day):
-        raise NotImplementedError()
+        start, end = self._parser._get_current_range(self._browser.current_page)
+        current = datetime.date(year, month, day)
+        if start <= current and current <= end:
+            activities = self._parser.parse_activities(self._browser.current_page)
+            return [a for a in activities if a.date == current]
+        else:
+            self._goto(year, month)
+            page = self._browser._current_page
+            command = self._parser.get_day_command(page, day)
+            page = self._browser.get(command)
+            return self._parser.parse_activities(page)
 
     def get_week(self, year, week):
-        raise NotImplementedError()
+        date = datetime.date(year, 1, 1) + datetime.timedelta(weeks=week)
+        self._goto(year, date.month)
+        page = self._browser._current_page
+        command = self._parser.get_week_command(page, week)
+        page = self._browser.get(command)
+        return self._parser.parse_activities(page)
 
     def get_month(self, year, month):
         start, end = self._parser._get_current_range(self._browser.current_page)

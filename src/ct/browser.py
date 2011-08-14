@@ -47,16 +47,27 @@ def updates_current_page(meth):
 
 
 class CurrentTimeBrowser(object):
+    COMMANDS = {
+        'get_current_month': 'caltimesheet=1,7',
+        'goto_next_month': 'caltimesheet=1,8',
+        'goto_prev_month': 'caltimesheet=1,5',
+        'goto_next_year': 'caltimesheet=1,4',
+        'goto_prev_year': 'caltimesheet=1,1',
+    }
+
     URLS = {
         'login': 'login.asp',
-        'get_current_month': 'Timesheet/default.asp?caltimesheet=1,7',
-        'goto_next_month': 'Timesheet/default.asp?caltimesheet=1,8',
-        'goto_prev_month': 'Timesheet/default.asp?caltimesheet=1,5',
-        'goto_next_year': 'Timesheet/default.asp?caltimesheet=1,4',
-        'goto_prev_year': 'Timesheet/default.asp?caltimesheet=1,1',
+        'rpc': 'Timesheet/default.asp',
         'get_projects': 'Timesheet/projects.asp',
-        'post_hours': 'Timesheet/default.asp',
     }
+
+    def _get_url(self, name):
+        rest = self.URLS.get(name)
+        return "%s/%s" % (self._server, rest)
+
+    def _get_command_url(self, command):
+        url = self._get_url("rpc")
+        return "%s?%s" % (url, command)
 
     def __getstate__(self):
         cookies = {}
@@ -97,25 +108,29 @@ class CurrentTimeBrowser(object):
         return is_logged_in
 
     @updates_current_page
-    def get_current_month(self):
-        url = self._get_url('get_current_month')
+    def get(self, command):
+        url = self._get_command_url(command)
         return self._read(url)
+
+    def get_current_month(self):
+        command = self.COMMANDS.get('get_current_month')
+        return self.get(command)
 
     def goto_next_month(self):
-        url = self._get_url('goto_next_month')
-        return self._read(url)
+        command = self.COMMANDS.get('goto_next_month')
+        return self.get(command)
 
     def goto_prev_month(self):
-        url = self._get_url('goto_prev_month')
-        return self._read(url)
+        command = self.COMMANDS.get('goto_prev_month')
+        return self.get(command)
 
     def goto_next_year(self):
-        url = self._get_url('goto_next_year')
-        return self._read(url)
+        command = self.COMMANDS.get('goto_next_year')
+        return self.get(command)
 
     def goto_prev_year(self):
-        url = self._get_url('goto_prev_year')
-        return self._read(url)
+        command = self.COMMANDS.get('goto_prev_year')
+        return self.get(command)
 
     def get_projects(self, date=None):
         if date is None:
@@ -139,7 +154,7 @@ class CurrentTimeBrowser(object):
         hours = str(activity.duration).replace(".", ",")
         comment = activity.comment
 
-        url = self._get_url('post_hours')
+        url = self._get_url('rpc')
         data = urllib.urlencode({
             "activityrow": "1",
             "activityrow_1": project_id,
@@ -155,7 +170,7 @@ class CurrentTimeBrowser(object):
     def delete_project(self, session_id, full_project_id, salary_id):
         raise NotImplementedError("This method is unsafe to use for now.")
         row_id = full_project_id + "," + salary_id
-        url = self._get_url('post_hours')
+        url = self._get_url('rpc')
         data = urllib.urlencode({
             "selectedrow": row_id,
             "useraction": "del",
@@ -178,10 +193,6 @@ class CurrentTimeBrowser(object):
 
         return urllib2.build_opener(
             urllib2.HTTPCookieProcessor(self._cookie_jar))
-
-    def _get_url(self, name):
-        rest = self.URLS.get(name)
-        return "%s/%s" % (self._server, rest)
 
     def _get_login_data(self, username, password):
         return urllib.urlencode({

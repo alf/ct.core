@@ -61,6 +61,31 @@ class CurrentTimeParser(object):
         s = "%s %s" % (m, y)
         return datetime.datetime.strptime(s, "%b %Y").date()
 
+    def get_day_command(self, response, day):
+        root = self._parse_response(response)
+        days = root.cssselect("td[class=date]")
+        for el in days:
+            if int(el.text_content()) == day:
+                url = el[0][0].get("href")
+                _, command = url.split("?")
+
+                parts = el[0][0].get("onclick").split(",")
+                row = parts[2]
+                column = parts[3].split(")")[0]
+                if command:
+                    command += "&"
+                command += "caltimesheet=%s,%s" % (row.strip(), column.strip())
+                return command
+
+    def get_week_command(self, response, week):
+        root = self._parse_response(response)
+        weeks = root.cssselect("td[class=week]")
+        for el in weeks:
+            if int(el.text_content()) == week:
+                url = el[0][0].get("href")
+                _, command = url.split("?")
+                return command
+
     def _parse_date(self, s):
         return datetime.datetime.strptime(s,"%d.%m.%Y").date()
 
@@ -70,7 +95,8 @@ class CurrentTimeParser(object):
         el = root.cssselect("td[class=accept]")[0]
         parts = el.text_content().strip().split(" ")
         if len(parts) > 3:
-            _, start, _, end = parts
+            start = parts[1]
+            end = parts[3]
         else:
             start, end = parts[1], parts[1]
         return self._parse_date(start), self._parse_date(end)
@@ -124,7 +150,8 @@ class CurrentTimeParser(object):
         ]
         tds = root.xpath("%s/td[%s]" % (row_root, " or ".join(ro_classes)))
 
-        for i, date in enumerate(self._dates(start, end)):
+        for n, date in enumerate(self._dates(start, end)):
+            i = n * 2
             duration_cell = tds[i][0]
             comment_cell = tds[i+1][0]
             if duration_cell.tag == "div" and len(duration_cell) > 0:
