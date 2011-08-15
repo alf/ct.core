@@ -54,12 +54,19 @@ class CurrentTimeParser(object):
         root = self._parse_response(response)
         return len(root.cssselect("body[class=login]")) == 0
 
-    def parse_navigation(self, response):
+    def _parse_navigation(self, response):
         root = self._parse_response(response)
-        el = root.cssselect("td[class=top]")[0]
-        m, y = el.text_content().strip().split()
-        s = "%s %s" % (m, y)
-        return datetime.datetime.strptime(s, "%b %Y").date()
+        script = root.cssselect("table table script")[0]
+        parts = script.split("'")
+        date = datetime.datetime.strptime(parts[1], "%Y%m").date()
+        calname = parts[3]
+        return {
+            'date': date,
+            'calname': calname,
+        }
+
+    def parse_navigation(self, response):
+        return self._parse_navigation(response)['date']
 
     def get_day_command(self, response, day):
         root = self._parse_response(response)
