@@ -47,55 +47,95 @@ class BaseAPI(object):
     def login(self, username, password):
         return self._browser.login(username, password)
 
-    @property
-    def current_date(self):
-        return self._parser.parse_current_month(self._browser.current_page)
+    def valid_session(self):
+        return self._parser.valid_session(self._browser.current_page)
 
+    def get_day(self, year, month, day):
+        start, end = self._parser._get_current_range(self._browser.current_page)
+        current = datetime.date(year, month, day)
+        if start <= current and current <= end:
+            activities = self._parser.parse_activities(self._browser.current_page)
+            return [a for a in activities if a.date == current]
+        else:
+            self._goto(year, month)
+            page = self._browser._current_page
+            command = self._parser.get_day_command(page, day)
+            page = self._browser.get(command)
+            return self._parser.parse_activities(page)
+
+    def get_week(self, year, week):
+        date = datetime.date(year, 1, 1) + datetime.timedelta(weeks=week)
+        self._goto(year, date.month)
+        page = self._browser._current_page
+        command = self._parser.get_week_command(page, week)
+        page = self._browser.get(command)
+        return self._parser.parse_activities(page)
+
+    def get_month(self, year, month):
+        start, end = self._parser._get_current_range(self._browser.current_page)
+        if start.year != year or start.month != month:
+            self._goto(year, month)
+            self._browser.get_current_month()
+            start, end = self._parser._get_current_range(self._browser.current_page)
+
+        if not (start.day == 1 and end.day >= 28):
+            self._browser.get_current_month()
+
+        return self._parser.parse_activities(self._browser.current_page)
+        
     def report_activity(self, activity):
         session_id = self._parser.parse_session_id(self._browser.current_page)
-        if not self._is_in_correct_state(activity.day):
+        if not self._is_in_correct_state(activity.date):
             raise ValueError(
                 "Date argument is not withing the currently displayed date.")
 
         return self._browser.update(session_id, activity)
 
-    def delete_activity(self, activity):
-        session_id = self._parser.parse_session_id(self._browser.current_page)
-        if not self._is_in_correct_state(activity.day):
-            raise ValueError(
-                "Date argument is not withing the currently displayed date.")
-
-        return self._browser.delete(session_id, activity)
-
-    def valid_session(self):
-        return self._parser.valid_session(self._browser.current_page)
-
-    def get_activities(self):
-        return self._parser.parse_activities(self._browser.current_page)
-
-    def goto_next_month(self):
-        response = self._browser.goto_next_month()
-        return self._parser.parse_navigation(response)
-
-    def goto_prev_month(self):
-        response = self._browser.goto_prev_month()
-        return self._parser.parse_navigation(response)
-
-    def goto_next_year(self):
-        response = self._browser.goto_next_year()
-        return self._parser.parse_navigation(response)
-
-    def goto_prev_year(self):
-        response = self._browser.goto_prev_year()
-        return self._parser.parse_navigation(response)
-
     def get_projects(self):
         response = self._browser.get_projects()
         return self._parser.parse_projects(response)
 
+    def _goto(self, year, month):
+        assert month > 0 and month <= 12
+
+        current = self._parser.parse_navigation(self._browser.current_page)
+
+        offset = abs(current.year - year)
+        if current.year < year:
+            for _ in range(offset):
+                self._goto_next_year()
+        else:
+            for _ in range(offset):
+                self._goto_prev_year()
+
+        offset = abs(current.month - month)
+        if current.month < month:
+            for _ in range(offset):
+                self._goto_next_month()
+        else:
+            for _ in range(offset):
+                self._goto_prev_month()
+
+
+    def _goto_next_month(self):
+        response = self._browser.goto_next_month()
+        return self._parser.parse_navigation(response)
+
+    def _goto_prev_month(self):
+        response = self._browser.goto_prev_month()
+        return self._parser.parse_navigation(response)
+
+    def _goto_next_year(self):
+        response = self._browser.goto_next_year()
+        return self._parser.parse_navigation(response)
+
+    def _goto_prev_year(self):
+        response = self._browser.goto_prev_year()
+        return self._parser.parse_navigation(response)
+
     def _is_in_correct_state(self, date):
-        current = self._parser.parse_current_month(self._browser.current_page)
-        return current.year == date.year and current.month == date.month
+        start, end = self._parser._get_current_range(self._browser.current_page)
+        return start <= date and date <= end
 
 
 class SimpleAPI(object):
@@ -108,52 +148,14 @@ class SimpleAPI(object):
     def valid_session(self):
         return self._ct.valid_session()
 
-    def _goto_year(self, year):
-        now = datetime.datetime.now()
-        assert abs(now.year - year) < 25, "Year offset too large"
-
-        current = self._ct.current_date.year
-        offset = abs(current - year)
-
-        if current < year:
-            for _ in range(offset):
-                self._ct.goto_next_year()
-        else:
-            for _ in range(offset):
-                self._ct.goto_prev_year()
-
-    def _goto_month(self, month):
-        assert month > 0 and month <= 12
-
-        current = self._ct.current_date.month
-        offset = abs(current - month)
-
-        if current < month:
-            for _ in range(offset):
-                self._ct.goto_next_month()
-        else:
-            for _ in range(offset):
-                self._ct.goto_prev_month()
-
     def get_projects(self, *args, **kwargs):
         return self._ct.get_projects(*args, **kwargs)
 
     def get_activities(self, year, month):
-        self._goto_year(year)
-        self._goto_month(month)
-
-        return self._ct.get_activities()
+        return self._ct.get_month(year, month)
 
     def report_activity(self, activity):
-        self._goto_year(activity.day.year)
-        self._goto_month(activity.day.month)
         return self._ct.report_activity(activity)
-
-    def delete_activity(self, activity):
-        self._goto_year(activity.day.year)
-        self._goto_month(activity.day.month)
-        return self._ct.delete_activity(activity)
-
 
 
 class RangeAPI(object):
@@ -173,7 +175,7 @@ class RangeAPI(object):
         activities = []
         for year, month in self._get_months_in_range(from_date, to_date):
             for activity in self._ct.get_activities(year, month):
-                if from_date <= activity.day and activity.day <= to_date:
+                if from_date <= activity.date and activity.date <= to_date:
                     activities.append(activity)
 
         return activities
@@ -181,10 +183,6 @@ class RangeAPI(object):
     def report_activity(self, activity, previous=None):
         self._perform_optimistic_concurrency_validation(activity, previous)
         return self._ct.report_activity(activity)
-
-    def delete_activity(self, activity, previous=None):
-        self._perform_optimistic_concurrency_validation(activity, previous)
-        return self._ct.delete_activity(activity)
 
     def _get_months_in_range(self, from_date, to_date):
         year, month = from_date.year, from_date.month
@@ -197,7 +195,7 @@ class RangeAPI(object):
                 year += 1
 
     def _perform_optimistic_concurrency_validation(self, activity, previous):
-        activities = self.get_activities(activity.day, activity.day)
+        activities = self.get_activities(activity.date, activity.date)
         if not previous and activity in activities:
             index = activities.index(activity)
             previous = activities[index]

@@ -30,12 +30,21 @@
 # as representing official policies, either expressed or implied, of
 # Alf Lervåg.
 
+import datetime
+import decimal
+
 class Activity(object):
-    def __init__(self, day, project_id, duration, comment, read_only=False):
-        # Use an internal dict so we're immutable
+    def __init__(self, date, project_id, duration, comment, salary_id="", read_only=False):
+        if not isinstance(date, datetime.date):
+            raise TypeError("date argument should be a date object")
+        
+        if not isinstance(duration, decimal.Decimal):
+            raise TypeError("duration argument should be a decimal")
+
         self._dict = {
-            'day': day,
+            'date': date,
             'project_id': project_id,
+            'salary_id': salary_id,
             'duration': duration,
             'comment': comment,
             'read_only': read_only,
@@ -43,8 +52,8 @@ class Activity(object):
 
     def __cmp__(self, other):
         return cmp(
-            (self.day, self.project_id),
-            (other.day, other.project_id))
+            (self.date, self.project_id),
+            (other.date, other.project_id))
 
     def __eq__(self, other):
         return self._dict == other._dict
@@ -53,14 +62,19 @@ class Activity(object):
         return not self == other
 
     def __hash__(self):
-        return hash((self.day, self.project_id))
+        return hash((self.date, self.project_id))
 
     def __str__(self):
         return str(self._dict)
 
     @property
     def day(self):
-        return self._dict['day']
+        """DEPRECATED"""
+        return self._dict['date']
+
+    @property
+    def date(self):
+        return self._dict['date']
 
     @property
     def full_project_id(self):
@@ -70,6 +84,10 @@ class Activity(object):
     @property
     def project_id(self):
         return self._dict['project_id']
+
+    @property
+    def salary_id(self):
+        return self._dict['salary_id']
 
     @property
     def duration(self):
