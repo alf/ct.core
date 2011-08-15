@@ -56,7 +56,7 @@ class CurrentTimeParser(object):
 
     def _parse_navigation(self, response):
         root = self._parse_response(response)
-        script = root.cssselect("table table script")[0]
+        script = root.cssselect("table table script")[0].text_content()
         parts = script.split("'")
         date = datetime.datetime.strptime(parts[1], "%Y%m").date()
         calname = parts[3]
