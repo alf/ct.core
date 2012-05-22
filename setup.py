@@ -7,5 +7,5 @@ setup(name='ct',
         ('share/ct', ['config.ini.sample']),
       ],
       install_requires=['lxml'],
-      package_dir = {'': 'src'},
+      package_dir={'': 'src'},
 )
