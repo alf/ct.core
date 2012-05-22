@@ -35,8 +35,8 @@ import calendar
 import datetime
 from decimal import Decimal
 
-from ct.project import Project
-from ct.activity import Activity
+from ct.core.project import Project
+from ct.core.activity import Activity
 
 
 class CurrentTimeParser(object):
