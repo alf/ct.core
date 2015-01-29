@@ -3,4 +3,4 @@ username =
 password = 
 
 [server]
-url = https://currenttime.bouvet.no
+url = https://currenttime.example.com
